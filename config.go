@@ -12,6 +12,10 @@ type Config struct {
 	Proxy struct {
 		To string
 	}
+	Cache struct {
+		Type string
+		Ttl  int16
+	}
 }
 
 var (

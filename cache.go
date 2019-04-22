@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,12 +19,12 @@ type CacheObject struct {
 }
 
 type Cacher interface {
-	IsExist(key string) bool
 	Get(key string) (error, CacheObject)
-	Add(key string, data interface{}) (error, string)
+	Add(key string, data interface{}) error
 	Remove(key string)
 }
 
+// memory cache
 type InMemoryCache struct {
 	data map[string]CacheObject
 	ttl  int16
@@ -46,6 +47,12 @@ func (i *InMemoryCache) Get(key string) (error, CacheObject) {
 
 func (i *InMemoryCache) Remove(key string) {
 	delete(i.data, key)
+}
+
+func (i *InMemoryCache) Add(key string, data interface{}) error {
+	i.data[key] = CacheObject{time.Now(), data}
+
+	return nil
 }
 
 func GetKey(r *http.Request) string {
@@ -71,4 +78,17 @@ func getMD5Hash(text string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(text))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func CreateCacher(ctype string, ttl int16) *Cacher {
+	var cacher Cacher
+
+	switch ctype {
+	case "memory":
+		cacher = &InMemoryCache{ttl: ttl}
+	default:
+		log.Fatalln("Unknown cacher type")
+	}
+
+	return &cacher
 }
