@@ -7,13 +7,13 @@ import (
 )
 
 // Serve a reverse proxy for a given url
-func ServeReverseProxy(target string, res http.ResponseWriter, req *http.Request) {
+func ServeReverseProxy(target string, res http.ResponseWriter, req *http.Request, resH func(*http.Response) error) {
 	// parse the url
 	url, _ := url.Parse(target)
 
 	// create the reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(url)
-
+	proxy.ModifyResponse = resH
 	// Update the headers to allow for SSL redirection
 	req.URL.Host = url.Host
 	req.URL.Scheme = url.Scheme
