@@ -9,16 +9,17 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
-type CacheObject struct {
-	CreatedAt time.Time
-	Data      interface{}
+type CachedResponse struct {
+	Headers map[string]string
+	Body    []byte
 }
 
+var CurrentCacher Cacher
+
 type Cacher interface {
-	Get(key string) (error, *CacheObject)
+	Get(key string) (error, *CachedResponse)
 	Add(key string, data interface{}) error
 	Remove(key string)
 }
@@ -29,12 +30,14 @@ func getMD5Hash(text string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func CreateCacher(ctype string, ttl int16) Cacher {
+func CreateCacher(ctype string, ttl int64) Cacher {
 	var cacher Cacher
 
 	switch ctype {
 	case "memory":
-		cacher = &InMemoryCache{make(map[string]CacheObject), ttl}
+		CurrentCacher = &InMemoryCache{make(map[string]CachedResponse), ttl}
+	case "redis":
+		CurrentCacher = NewRedisCache(ttl)
 	default:
 		log.Fatalln("Unknown cacher type")
 	}

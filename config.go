@@ -13,8 +13,12 @@ type Config struct {
 		To string
 	}
 	Cache struct {
-		Type string
-		Ttl  int16
+		Type    string
+		Ttl     int64
+		Address string
+	}
+	Statistic struct {
+		Storetime uint64
 	}
 }
 

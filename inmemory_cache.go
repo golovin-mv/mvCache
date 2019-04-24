@@ -6,14 +6,14 @@ import (
 )
 
 type InMemoryCache struct {
-	data map[string]CacheObject
-	ttl  int16
+	data map[string]CachedResponse
+	ttl  int64
 }
 
-func (i *InMemoryCache) Get(key string) (error, *CacheObject) {
+func (i *InMemoryCache) Get(key string) (error, *CachedResponse) {
 	// проверим существеут ли элемент
 	if val, ok := i.data[key]; ok {
-		d := time.Now().Sub(val.CreatedAt)
+		d := time.Duration(0)
 
 		if d.Seconds() > float64(i.ttl) {
 			i.Remove(key)
@@ -30,7 +30,5 @@ func (i *InMemoryCache) Remove(key string) {
 }
 
 func (i *InMemoryCache) Add(key string, data interface{}) error {
-	i.data[key] = CacheObject{time.Now(), data}
-
 	return nil
 }
