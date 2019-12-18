@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -50,12 +52,45 @@ func (r *RedisCache) Remove(key string) {
 	r.client.Del(key)
 }
 
+func (r *RedisCache) Count() int {
+	c := r.makeCommand("DBSIZE")
+	res, err := c.Result()
+
+	if err != nil {
+		return -1
+	}
+
+	co, err := strconv.ParseInt(res, 10, 32)
+
+	if err != nil {
+		return -1
+	}
+
+	return int(co)
+}
+
+func (r *RedisCache) Clear() {
+	r.makeCommand("FLUSHDB")
+}
+
+func (r *RedisCache) makeCommand(com string) *redis.StringCmd {
+	cmd := redis.NewStringCmd(com)
+	r.client.Process(cmd)
+
+	return cmd
+}
+
 func NewRedisCache(ttl int64) *RedisCache {
 	conf := GetConfig()
 	c := new(RedisCache)
 	client := redis.NewClient(&redis.Options{Addr: conf.Cache.Address})
 	c.client = client
-	c.ttl = 0 - ttl
+	c.ttl = ttl
+	_, err := client.Ping().Result()
+
+	if err != nil {
+		panic(errors.New("Failed connect to Redis : " + err.Error()))
+	}
 	log.Println("Connected to Redis: " + conf.Cache.Address)
 	return c
 }

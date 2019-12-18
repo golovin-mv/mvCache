@@ -22,6 +22,8 @@ type Cacher interface {
 	Get(key string) (error, *CachedResponse)
 	Add(key string, data interface{}) error
 	Remove(key string)
+	Count() int
+	Clear()
 }
 
 func getMD5Hash(text string) string {
@@ -31,18 +33,16 @@ func getMD5Hash(text string) string {
 }
 
 func CreateCacher(ctype string, ttl int64) Cacher {
-	var cacher Cacher
-
 	switch ctype {
 	case "memory":
-		CurrentCacher = &InMemoryCache{make(map[string]CachedResponse), ttl}
+		CurrentCacher = &InMemoryCache{make(map[string]storedData), ttl}
 	case "redis":
 		CurrentCacher = NewRedisCache(ttl)
 	default:
 		log.Fatalln("Unknown cacher type")
 	}
 
-	return cacher
+	return CurrentCacher
 }
 
 func GetKey(r *http.Request) string {

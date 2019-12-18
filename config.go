@@ -1,25 +1,31 @@
 package main
 
 import (
+	"errors"
 	"io/ioutil"
 	"sync"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
+type cache struct {
+	Type    string
+	Ttl     int64
+	Address string
+}
 type Config struct {
 	Port  int16
 	Proxy struct {
 		To string
 	}
-	Cache struct {
-		Type    string
-		Ttl     int64
-		Address string
-	}
+
+	Cache cache
+
 	Statistic struct {
 		Storetime uint64
 	}
+
+	CacheErrors bool `yaml:"cache-errors"`
 }
 
 var (
@@ -48,6 +54,16 @@ func createConfig() *Config {
 
 	if err != nil {
 		panic(err)
+	}
+
+	// если не задано куда кэшировать - паникуем
+	if conf.Proxy.To == "" {
+		panic(errors.New("Proxy to not set"))
+	}
+
+	// если у нас не задан кэш, по умолчанию будет в памяти
+	if (cache{}) == conf.Cache {
+		conf.Cache = cache{Ttl: 10, Type: "memory"}
 	}
 
 	return &conf
