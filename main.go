@@ -22,6 +22,7 @@ type ProxyCount struct {
 var count *Counter
 var proxy *Proxy
 var cacher Cacher
+var consulClient *ConsulClient
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	c := GetConfig()
@@ -86,6 +87,11 @@ func main() {
 	if c.Statistic.Storetime > 0 {
 		go gocron.Start()
 		gocron.Every(c.Statistic.Storetime).Seconds().Do(dropCounter)
+	}
+
+	if c.Consul.Enable {
+		consulClient := NewConsulClient(&c.Consul)
+		consulClient.connect()
 	}
 
 	log.Println(fmt.Sprintf("mvCache run port: %d", c.Port))

@@ -1,3 +1,4 @@
+// TODO: to config package
 package main
 
 import (
@@ -7,6 +8,12 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 )
+
+type ConsulConfig struct {
+	Enable      bool
+	Host        string
+	ServiceName string `yaml:"service-name"`
+}
 
 type cache struct {
 	Type    string
@@ -26,6 +33,7 @@ type Config struct {
 	}
 
 	CacheErrors bool `yaml:"cache-errors"`
+	Consul      ConsulConfig
 }
 
 var (
