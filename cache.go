@@ -11,6 +11,12 @@ import (
 	"strings"
 )
 
+type CacheConfig struct {
+	Type    string
+	Ttl     int64
+	Address string
+}
+
 type CachedResponse struct {
 	Headers map[string]string
 	Body    []byte
@@ -32,12 +38,16 @@ func getMD5Hash(text string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func CreateCacher(ctype string, ttl int64) Cacher {
-	switch ctype {
+func CreateCacher(c *CacheConfig) Cacher {
+	if c == nil {
+		c = defaultConfig()
+	}
+
+	switch c.Type {
 	case "memory":
-		CurrentCacher = &InMemoryCache{make(map[string]storedData), ttl}
+		CurrentCacher = &InMemoryCache{make(map[string]storedData), c.Ttl}
 	case "redis":
-		CurrentCacher = NewRedisCache(ttl)
+		CurrentCacher = NewRedisCache(c.Ttl)
 	default:
 		log.Fatalln("Unknown cacher type")
 	}
@@ -62,4 +72,10 @@ func GetKey(r *http.Request) string {
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
 	return getMD5Hash(strings.ToLower(key))
+}
+
+func defaultConfig() *CacheConfig {
+	conf := CacheConfig{Ttl: 10, Type: "memory"}
+
+	return &conf
 }

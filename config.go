@@ -9,31 +9,20 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type ConsulConfig struct {
-	Enable      bool
-	Host        string
-	ServiceName string `yaml:"service-name"`
-}
-
-type cache struct {
-	Type    string
-	Ttl     int64
-	Address string
-}
 type Config struct {
 	Port  int16
 	Proxy struct {
 		To string
 	}
 
-	Cache cache
+	Cache *CacheConfig
 
 	Statistic struct {
 		Storetime uint64
 	}
 
 	CacheErrors bool `yaml:"cache-errors"`
-	Consul      ConsulConfig
+	Consul      *ConsulConfig
 }
 
 var (
@@ -67,11 +56,6 @@ func createConfig() *Config {
 	// если не задано куда кэшировать - паникуем
 	if conf.Proxy.To == "" {
 		panic(errors.New("Proxy to not set"))
-	}
-
-	// если у нас не задан кэш, по умолчанию будет в памяти
-	if (cache{}) == conf.Cache {
-		conf.Cache = cache{Ttl: 10, Type: "memory"}
 	}
 
 	return &conf

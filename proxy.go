@@ -8,12 +8,12 @@ import (
 	"net/url"
 )
 
-type Proxy struct {
+type CacheProxy struct {
 	CacheErrors bool
 }
 
 // Serve a reverse proxy for a given url
-func (p *Proxy) ServeReverseProxy(target string, res http.ResponseWriter, req *http.Request) {
+func (p *CacheProxy) ServeReverseProxy(target string, res http.ResponseWriter, req *http.Request) {
 	// parse the url
 	url, _ := url.Parse(target)
 

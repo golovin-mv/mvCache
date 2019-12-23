@@ -20,7 +20,7 @@ type ProxyCount struct {
 }
 
 var count *Counter
-var proxy *Proxy
+var proxy *CacheProxy
 var cacher Cacher
 var consulClient *ConsulClient
 
@@ -76,8 +76,8 @@ func main() {
 	c := GetConfig()
 
 	count = &Counter{}
-	proxy = &Proxy{c.CacheErrors}
-	cacher = CreateCacher(c.Cache.Type, c.Cache.Ttl)
+	proxy = &CacheProxy{c.CacheErrors}
+	cacher = CreateCacher(c.Cache)
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/api/stat", getCounter)
@@ -91,7 +91,7 @@ func main() {
 	}
 
 	if c.Consul.Enable {
-		consulClient := NewConsulClient(&c.Consul)
+		consulClient := NewConsulClient(c.Consul)
 		consulClient.connect()
 	}
 

@@ -16,6 +16,12 @@ type HealthCheckDto struct {
 	Status string
 }
 
+type ConsulConfig struct {
+	Enable      bool
+	Host        string
+	ServiceName string `yaml:"service-name"`
+}
+
 type ConsulClient struct {
 	ServiceName string
 	Host        string
