@@ -36,6 +36,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		atomic.AddUint64(&count.Requests, 1)
 		return
 	}
+
 	for key, val := range data.Headers {
 		w.Header().Set(key, val)
 	}

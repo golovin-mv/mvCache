@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -42,7 +43,7 @@ func (c *ConsulClient) connect() {
 
 	http.HandleFunc("/healthcheck", healtCheck)
 
-	c.register()
+	c.register(c.ServiceName)
 
 	log.Println("Connected to Consul: " + c.Host)
 
@@ -54,10 +55,10 @@ func NewConsulClient(conf *ConsulConfig) *ConsulClient {
 	return &client
 }
 
-func (c *ConsulClient) register() *api.AgentServiceRegistration {
+func (c *ConsulClient) register(name string) *api.AgentServiceRegistration {
 	registration := new(api.AgentServiceRegistration)
-	registration.ID = "product-service"   //replace with service id
-	registration.Name = "product-service" //replace with service name
+	registration.ID = name + "-" + uuid()
+	registration.Name = name
 	address := hostname()
 	registration.Address = address
 
@@ -67,8 +68,8 @@ func (c *ConsulClient) register() *api.AgentServiceRegistration {
 	registration.Check = new(api.AgentServiceCheck)
 	registration.Check.HTTP = fmt.Sprintf("http://%s:%v/healthcheck",
 		address, port)
-	registration.Check.Interval = "5s"
-	registration.Check.Timeout = "3s"
+	registration.Check.Interval = "10s"
+	registration.Check.Timeout = "8s"
 
 	c.Client.Agent().ServiceRegister(registration)
 
@@ -91,4 +92,15 @@ func hostname() string {
 		log.Fatalln(err)
 	}
 	return hn
+}
+
+func uuid() string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return fmt.Sprintf("%x-%x-%x-%x-%x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
