@@ -7,6 +7,15 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/golovin-mv/mvCache/guard"
+
+	"github.com/golovin-mv/mvCache/consul"
+
+	"github.com/golovin-mv/mvCache/proxy"
+
+	"github.com/golovin-mv/mvCache/config"
+
+	"github.com/golovin-mv/mvCache/cache"
 	"github.com/jasonlvhit/gocron"
 )
 
@@ -20,19 +29,24 @@ type ProxyCount struct {
 }
 
 var count *Counter
-var proxy *CacheProxy
-var cacher Cacher
-var consulClient *ConsulClient
+var p proxy.Proxy
+var cacher cache.Cacher
+var consulClient *consul.ConsulClient
+var gu *guard.Guard
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	c := GetConfig()
+	if gu != nil {
+		if !gu.Guard(w, r) {
+			return
+		}
+	}
 	// получаем ключ
-	key := GetKey(r)
+	key := cache.GetKey(r)
 	// проверим есть ли значение в кэш
-	err, data := CurrentCacher.Get(key)
+	err, data := cache.CurrentCacher.Get(key)
 
 	if err != nil {
-		proxy.ServeReverseProxy(c.Proxy.To, w, r)
+		p.Serve(w, r)
 		atomic.AddUint64(&count.Requests, 1)
 		return
 	}
@@ -73,11 +87,11 @@ func dropCache(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	c := GetConfig()
+	c := config.GetConfig()
 
 	count = &Counter{}
-	proxy = &CacheProxy{c.CacheErrors}
-	cacher = CreateCacher(c.Cache)
+	p = proxy.NewProxy(c.Proxy)
+	cacher = cache.CreateCacher(c.Cache)
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/api/stat", getCounter)
@@ -91,8 +105,12 @@ func main() {
 	}
 
 	if c.Consul.Enable {
-		consulClient := NewConsulClient(c.Consul)
-		consulClient.connect()
+		consulClient := consul.NewConsulClient(c.Consul, c.Port)
+		consulClient.Connect()
+	}
+
+	if c.Guard.Enable {
+		gu = guard.NewGuard(c.Guard)
 	}
 
 	log.Println(fmt.Sprintf("mvCache run port: %d", c.Port))
