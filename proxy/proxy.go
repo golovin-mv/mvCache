@@ -1,12 +1,10 @@
 package proxy
 
 import (
-	"bytes"
 	"errors"
-	"io/ioutil"
 	"net/http"
 
-	"github.com/golovin-mv/mvCache/cache"
+	"github.com/golovin-mv/mvCache/mutation"
 )
 
 type ProxyConfig struct {
@@ -16,17 +14,38 @@ type ProxyConfig struct {
 	CacheErrors bool
 }
 
+type BaseProxy struct {
+	ResponseHandler func(r *http.Response)
+}
+
 type Proxy interface {
 	Serve(res http.ResponseWriter, req *http.Request)
 }
 
-func NewProxy(c *ProxyConfig) Proxy {
+func NewProxy(c *ProxyConfig, rMu []mutation.ResponseMutation) Proxy {
 	var p Proxy
 	switch c.Type {
 	case "reverse":
-		p = &ReverseProxy{c}
+		revP := &ReverseProxy{config: c}
+		if rMu != nil && len(rMu) > 0 {
+			revP.ResponseHandler = func(res *http.Response) {
+				for _, r := range rMu {
+					r.Change(res)
+				}
+			}
+		}
+		p = revP
 	case "retry":
-		p = &RetryProxy{c}
+		retP := NewRetryProxy(c)
+		if rMu != nil && len(rMu) > 0 {
+			retP.ResponseHandler = func(res *http.Response) {
+				for _, r := range rMu {
+					r.Change(res)
+				}
+			}
+		}
+
+		p = retP
 	default:
 		panic(errors.New("Unknown Proxy Type"))
 	}
@@ -42,25 +61,6 @@ func headerToArray(header http.Header) map[string]string {
 		}
 	}
 	return res
-}
-
-func makeHandler(key string, cacheError bool) func(r *http.Response) error {
-	return func(r *http.Response) error {
-		body, err := ioutil.ReadAll(r.Body)
-
-		if err != nil {
-			return err
-		}
-
-		// если статус 200 или не 200 но мы кэшируем ошибки
-		if isOkStatus(r.StatusCode) || (!isOkStatus(r.StatusCode) && cacheError) {
-			cache.CurrentCacher.Add(key, &cache.CachedResponse{headerToArray(r.Header), body})
-		}
-
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-
-		return nil
-	}
 }
 
 func isOkStatus(status int) bool {

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/golovin-mv/mvCache/mutation"
+
 	"github.com/golovin-mv/mvCache/guard"
 
 	"github.com/golovin-mv/mvCache/consul"
@@ -33,12 +35,18 @@ var p proxy.Proxy
 var cacher cache.Cacher
 var consulClient *consul.ConsulClient
 var gu *guard.Guard
+var mu []mutation.RequestMutation
+var rMu []mutation.ResponseMutation
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	if gu != nil {
 		if !gu.Guard(w, r) {
 			return
 		}
+	}
+
+	if mu != nil && len(mu) > 0 {
+		makeMutation(r)
 	}
 	// получаем ключ
 	key := cache.GetKey(r)
@@ -90,7 +98,6 @@ func main() {
 	c := config.GetConfig()
 
 	count = &Counter{}
-	p = proxy.NewProxy(c.Proxy)
 	cacher = cache.CreateCacher(c.Cache)
 
 	http.HandleFunc("/", handler)
@@ -113,6 +120,42 @@ func main() {
 		gu = guard.NewGuard(c.Guard)
 	}
 
+	if c.Mutation != nil {
+		mu = initMutation(c.Mutation)
+		rMu = initResponceMutation(c.Mutation)
+	}
+	p = proxy.NewProxy(c.Proxy, rMu)
 	log.Println(fmt.Sprintf("mvCache run port: %d", c.Port))
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", c.Port), nil))
+}
+
+// TODO: to mutation
+func initMutation(c *mutation.MutationConfig) []mutation.RequestMutation {
+	mu := []mutation.RequestMutation{}
+
+	if c.Headers != nil && len(c.Headers) > 0 {
+		mu = append(mu, &mutation.HeaderMutation{c.Headers})
+	}
+
+	if c.Path != nil && len(c.Path) > 0 {
+		mu = append(mu, &mutation.Path{c.Path})
+	}
+
+	return mu
+}
+
+// TODO: to mutation
+func initResponceMutation(c *mutation.MutationConfig) []mutation.ResponseMutation {
+	rMu := []mutation.ResponseMutation{}
+	if c.RemoveHeaders != nil && len(c.RemoveHeaders) > 0 {
+		rMu = append(rMu, &mutation.RemoveHeadersMutation{c.RemoveHeaders})
+	}
+
+	return rMu
+}
+
+func makeMutation(r *http.Request) {
+	for _, m := range mu {
+		m.Change(r)
+	}
 }

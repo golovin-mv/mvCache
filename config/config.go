@@ -1,9 +1,10 @@
-// TODO: to config package
 package config
 
 import (
 	"io/ioutil"
 	"sync"
+
+	"github.com/golovin-mv/mvCache/mutation"
 
 	"github.com/golovin-mv/mvCache/guard"
 
@@ -28,6 +29,7 @@ type Config struct {
 	Consul      *consul.ConsulConfig
 	Proxy       *proxy.ProxyConfig
 	Guard       *guard.GuardCongif
+	Mutation    *mutation.MutationConfig
 }
 
 var (
@@ -44,7 +46,7 @@ func GetConfig() *Config {
 }
 
 func createConfig() *Config {
-	data, err := ioutil.ReadFile("./config.yml")
+	data, err := ioutil.ReadFile("./config/config.yml")
 
 	if err != nil {
 		panic(err)
